@@ -8,7 +8,7 @@ import com.google.common.collect.Sets;
  * A {@link TimerFactory} designed for use in testing.
  * This factory constructs {@link Timer}s which do not run on ordinary time,
  * but instead depend on an artificial timeline which progresses only
- * as directly by this time controller.
+ * as directed by this time controller.
  */
 public class TimeController implements TimerFactory {
 
