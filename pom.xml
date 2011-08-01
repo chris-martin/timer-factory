@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-    <timerfactory.version>1.0</timerfactory.version>
+    <timerfactory.version>1.0-SNAPSHOT</timerfactory.version>
   </properties>
 
   <groupId>org.codeswarm</groupId>

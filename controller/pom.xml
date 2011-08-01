@@ -8,12 +8,12 @@
   <parent>
     <groupId>org.codeswarm</groupId>
     <artifactId>timer-factory</artifactId>
-    <version>1.0</version>
+    <version>1.0-SNAPSHOT</version>
   </parent>
 
   <groupId>org.codeswarm</groupId>
   <artifactId>timer-factory-controller</artifactId>
-  <version>1.0</version>
+  <version>1.0-SNAPSHOT</version>
 
   <name>TimerFactory Controller</name>
 
