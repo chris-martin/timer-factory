@@ -26,8 +26,7 @@ class StandardTimer implements Timer {
 
   @Override
   public void scheduleRepeating(int periodMillis) {
-    timer.scheduleAtFixedRate(task, 0, periodMillis);
-    // TODO this is probably wrong - read the javadoc for scheduleAtFixedRate once I get off the airplane
+    timer.schedule(task, periodMillis, periodMillis);
   }
 
   @Override
