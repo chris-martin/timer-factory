@@ -14,6 +14,12 @@
   <packaging>pom</packaging>
   <version>${timerfactory.version}</version>
 
+  <name>Timer Factory</name>
+  <description>
+    Java (GWT-compatible) timer API designed to support
+    testing of time-dependent logic.
+  </description>
+
   <parent>
     <groupId>org.sonatype.oss</groupId>
     <artifactId>oss-parent</artifactId>
