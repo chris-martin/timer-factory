@@ -1,5 +1,7 @@
 package org.codeswarm.timerfactory;
 
+import com.google.common.base.Preconditions;
+
 /**
  * The type of {@link org.codeswarm.timerfactory.Timer} constructed by
  * {@link org.codeswarm.timerfactory.TimeController}.
@@ -8,13 +10,14 @@ package org.codeswarm.timerfactory;
 class ControlledTimer implements Timer {
 
   private final TimerTask task;
-  private int remainingMillis;
-  private int repeatMillis;
-  private TimeController timeController;
+  private final Activation activation;
 
-  public ControlledTimer(TimeController timeController, TimerTask task) {
-    this.timeController = timeController;
+  private int delay;
+  private int period;
+
+  ControlledTimer(TimerTask task, Activation activation) {
     this.task = task;
+    this.activation = activation;
   }
 
   @Override
@@ -23,70 +26,52 @@ class ControlledTimer implements Timer {
   }
 
   @Override
-  public void schedule(int delayMillis) {
-    repeatMillis = 0;
-    remainingMillis = delayMillis;
-    addOrRemove();
+  public void schedule(int delay) {
+    set(delay, 0);
   }
 
   @Override
-  public void scheduleRepeating(int periodMillis) {
-    repeatMillis = periodMillis;
-    remainingMillis = periodMillis;
-    addOrRemove();
+  public void scheduleRepeating(int period) {
+    set(period, period);
+  }
+
+  private void set(int delay, int period) {
+    this.delay = delay;
+    this.period = period;
+    activation.setActive(delay != 0);
   }
 
   @Override
   public void cancel() {
-    remainingMillis = 0;
-    remove();
+    delay = 0;
+    activation.setActive(false);
   }
 
   /**
-   * Causes the timer to behave as if the given number of milliseconds have passed.
+   * Causes the timer to behave as if the given quantity of
+   * time has passed.
    *
-   * @param progressMillis
-   *  The number of milliseconds to advance. Can not be greater than the amount of
-   *  time remaining until this timer will execute. The only way to run a timer is
-   *  to advance time exactly to the point of its execution.
+   * @param progress The number of milliseconds to advance.
+   *  Can not be greater than the amount of time remaining
+   *  until this timer will execute. The only way to run a
+   *  timer is to advance time exactly to the point of its
+   *  execution.
    */
-  void advanceTime(int progressMillis) {
-    assert progressMillis <= remainingMillis;
-    if (progressMillis == remainingMillis) {
+  void advanceTime(int progress) {
+    Preconditions.checkArgument(progress <= delay);
+    if (progress == delay) {
       run();
-      remainingMillis = repeatMillis;
-      if (remainingMillis == 0) {
-        remove();
+      delay = period;
+      if (delay == 0) {
+        activation.setActive(false);
       }
     } else {
-      remainingMillis -= progressMillis;
+      delay -= progress;
     }
   }
 
-  public int getRemainingMillis() {
-    return remainingMillis;
-  }
-
-  private void addOrRemove() {
-    if (remainingMillis == 0) {
-      remove();
-    } else {
-      add();
-    }
-  }
-
-  /**
-   * Adds this timer to the time controller, indicating that the timer is active.
-   */
-  private void add() {
-    timeController.add(this);
-  }
-
-  /**
-   * Removes this timer from the time controller, indicating that the timer is inactive.
-   */
-  private void remove() {
-    timeController.remove(this);
+  int getDelay() {
+    return delay;
   }
 
 }
