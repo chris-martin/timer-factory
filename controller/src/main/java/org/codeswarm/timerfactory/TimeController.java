@@ -1,11 +1,6 @@
 package org.codeswarm.timerfactory;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-
-import java.util.List;
-import java.util.Set;
 
 /**
  * A {@link TimerFactory} designed for use in testing.
@@ -15,21 +10,21 @@ import java.util.Set;
  */
 public class TimeController implements TimerFactory {
 
-  // Timers, constructed by this class, that are currently running.
-  private final Set<ControlledTimer> timers = Sets.newHashSet();
+  private final TimerQueue queue = new TimerQueue();
+
+  private Time time = new Time(0l);
+
+  private final TimeProvider timeProvider = new TimeProvider() {
+    @Override
+    public Time currentTime() {
+      return time;
+    }
+  };
 
   @Override
   public Timer createTimer(TimerTask task) {
     Preconditions.checkNotNull(task);
-    final List<ControlledTimer> timer = Lists.newArrayList();
-    timer.add(new ControlledTimer(task, new Activation() {
-      @Override
-      public void setActive(boolean active) {
-        if (active) timers.add(timer.get(0));
-        else timers.remove(timer.get(0));
-      }
-    }));
-    return timer.get(0);
+    return new ControlledTimer(task, timeProvider, queue);
   }
 
   /**
@@ -42,28 +37,46 @@ public class TimeController implements TimerFactory {
    *  advance the fake timeline. Must be nonnegative.
    */
   public void advanceTime(int progressMillis) {
-    Preconditions.checkArgument(progressMillis >= 0);
-    if (progressMillis == 0 || timers.size() == 0) return;
-    int elapsed = minDelayTimer().getDelay();
-    for (ControlledTimer timer : timers) timer.advanceTime(elapsed);
-    advanceTime(progressMillis - elapsed);
-  }
 
-  /**
-   * Searches the set of active timers to find the one
-   * (resolving ties arbitrarily) with the shortest time
-   * remaining until execution.
-   */
-  private ControlledTimer minDelayTimer() {
-    int minDelay = Integer.MAX_VALUE;
-    ControlledTimer soonestExpiringTimer = null;
-    for (ControlledTimer timer : timers) {
-      if (timer.getDelay() != 0 && timer.getDelay() < minDelay) {
-        minDelay = timer.getDelay();
-        soonestExpiringTimer = timer;
-      }
+    // Condition check
+    Preconditions.checkArgument(progressMillis >= 0);
+
+    // Timer with the soonest future run time
+    ControlledTimer timer = queue.peek();
+
+    // If the queue was empty, just skip time ahead
+    if (timer == null) {
+      time = time.future(progressMillis);
+      return;
     }
-    return soonestExpiringTimer;
+
+    // The time at which the timer will run. We will
+    // skip to this point at the end of the iteration.
+    Time newTime = timer.getNextRun();
+
+    // How much time will pass from now until the timer is run
+    int timerDelay = time.util(newTime);
+
+    // Always run timers that have run out,
+    // but otherwise try to terminate recursion.
+    if (timerDelay != 0 && progressMillis == 0) return;
+
+    // If we're not progressing far enough to
+    // trigger this timer, just skip time ahead
+    if (progressMillis < timerDelay) {
+      time = time.future(progressMillis);
+      return;
+    }
+
+    // Run the timer
+    timer._run();
+
+    // Skip to the time at which the timer executes
+    time = newTime;
+
+    // Recurse
+    advanceTime(progressMillis - timerDelay);
+
   }
 
 }

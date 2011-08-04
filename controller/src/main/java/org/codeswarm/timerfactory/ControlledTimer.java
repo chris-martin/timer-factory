@@ -9,15 +9,20 @@ import com.google.common.base.Preconditions;
  */
 class ControlledTimer implements Timer {
 
+  private final TimeProvider timeProvider;
+  private final TimerUpdater updater;
   private final TimerTask task;
-  private final Activation activation;
-
   private int delay;
-  private int period;
+  private boolean repeating;
+  private ActiveState active = new ActiveState();
+  private Time nextRun;
 
-  ControlledTimer(TimerTask task, Activation activation) {
+  ControlledTimer(TimerTask task,
+                  TimeProvider timeProvider,
+                  TimerUpdater updater) {
     this.task = task;
-    this.activation = activation;
+    this.timeProvider = timeProvider;
+    this.updater = updater;
   }
 
   @Override
@@ -27,51 +32,59 @@ class ControlledTimer implements Timer {
 
   @Override
   public void schedule(int delay) {
-    set(delay, 0);
+    schedule(delay, false);
   }
 
   @Override
   public void scheduleRepeating(int period) {
-    set(period, period);
+    schedule(period, true);
   }
 
-  private void set(int delay, int period) {
+  private void schedule(int delay, boolean repeating) {
+    active.set(true);
     this.delay = delay;
-    this.period = period;
-    activation.setActive(delay != 0);
+    this.repeating = repeating;
+    nextRun = timeProvider.currentTime().future(delay);
+    updater.update(this);
   }
 
   @Override
   public void cancel() {
-    delay = 0;
-    activation.setActive(false);
-  }
-
-  /**
-   * Causes the timer to behave as if the given quantity of
-   * time has passed.
-   *
-   * @param progress The number of milliseconds to advance.
-   *  Can not be greater than the amount of time remaining
-   *  until this timer will execute. The only way to run a
-   *  timer is to advance time exactly to the point of its
-   *  execution.
-   */
-  void advanceTime(int progress) {
-    Preconditions.checkArgument(progress <= delay);
-    if (progress == delay) {
-      run();
-      delay = period;
-      if (delay == 0) {
-        activation.setActive(false);
-      }
-    } else {
-      delay -= progress;
+    if (active.get()) {
+      active.set(false);
     }
   }
 
-  int getDelay() {
-    return delay;
+  void _run() {
+    Preconditions.checkState(active.get());
+    run();
+    nextRun = repeating ? timeProvider.currentTime().future(delay) : null;
+    active.set(repeating);
+  }
+
+  Time getNextRun() {
+    Preconditions.checkState(active.get());
+    return nextRun;
+  }
+
+  public boolean isActive() {
+    return active.get();
+  }
+
+  private class ActiveState {
+
+    boolean value;
+
+    void set(boolean value) {
+      this.value = value;
+      if (!value) nextRun = null;
+      updater.update(ControlledTimer.this);
+    }
+
+    boolean get() {
+      return value;
+    }
+
   }
 
 }
