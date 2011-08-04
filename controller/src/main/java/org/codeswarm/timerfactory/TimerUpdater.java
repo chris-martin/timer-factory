@@ -1,6 +1,6 @@
 package org.codeswarm.timerfactory;
 
-public interface TimerUpdater {
+interface TimerUpdater {
 
   void update(ControlledTimer timer);
 
